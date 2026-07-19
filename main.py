@@ -71,23 +71,24 @@ def process_incident_with_ai(db_record_id: int, raw_payload: str, db: Session):
             incident.status = "FAILED_RETRY"
             db.commit()
 
-@app.post("/alerts/", response_model=schemas.IncidentResponse)
-def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTasks, db: Session = Depends(database.get_db)):
-    # 1. Instantly log the raw alert into the database so we never drop data
+@app.post("/alerts/") 
+def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    # 1. Instantly log the raw alert
     db_incident = models.IncidentReport(
-        raw_text=alert.raw_text,
+        raw_text=alert.threat_text,  # 🐛 FIXED: Swapped 'alert.raw_text' to 'alert.threat_text' 
         status="PROCESSING",
         severity="PENDING",
         category="PENDING",
-        summary="Awaiting AI Analysis..."
+        summary="Awaiting AI Analysis"
     )
     db.add(db_incident)
     db.commit()
     db.refresh(db_incident)
 
-    # 2. Hand off the heavy AI lifting to a non-blocking background thread
-    # This keeps our API blazing fast, returning an instant 200 OK receipt to the sender
-    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.raw_text, db)
+    # 2. Hand off the heavy AI lifting...
+    # This keeps our API blazing fast
+    # 🐛 FIXED: Also swapped to 'alert.threat_text' here for the background task
+    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text, db)
 
     return db_incident
-  
+    
