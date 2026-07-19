@@ -10,7 +10,6 @@ import models, schemas, database
 app = FastAPI(title="SOAR AI Triage Engine")
 
 # Initialize the official Google GenAI Client
-# The SDK automatically draws the key securely from os.environ["GEMINI_API_KEY"]
 ai_client = genai.Client()
 
 # Auto-build database tables on boot
@@ -26,10 +25,8 @@ class AutomatedTriageReport(BaseModel):
 def read_root():
     return {"status": "online", "engine": "SOAR Live AI Triage Active"}
 
-# 1. Update the function signature to receive 'threat_text' instead of 'raw_payload'
 def process_incident_with_ai(db_record_id: int, threat_text: str, db: Session):
     try:
-        # 2. Update the prompt to use the 'threat_text' variable
         prompt = f"""
         You are an enterprise Incident Response SOAR Automation agent. 
         Analyze the following raw security alert data and extract the triage details.
@@ -39,8 +36,6 @@ def process_incident_with_ai(db_record_id: int, threat_text: str, db: Session):
         Raw Alert Data:
         {threat_text}
         """
-        # ... rest of your code ...
-        
 
         # Call Gemini requesting structured JSON output matching our schema
         response = ai_client.models.generate_content(
@@ -66,7 +61,6 @@ def process_incident_with_ai(db_record_id: int, threat_text: str, db: Session):
             db.commit()
 
     except Exception as e:
-        # Fallback safety handler if the AI call hits a rate limit or network glitch
         db.rollback()
         incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == db_record_id).first()
         if incident:
@@ -77,9 +71,9 @@ def process_incident_with_ai(db_record_id: int, threat_text: str, db: Session):
 
 @app.post("/alerts/", response_model=schemas.IncidentResponse)
 def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTasks, db: Session = Depends(database.get_db)):
-    # 1. Instantly log the raw alert into the database so we never drop data
+    # 1. Instantly log the raw alert into the database
     db_incident = models.IncidentReport(
-        raw_text=alert.threat_text,  # 🐛 FIXED: Swapped alert.raw_text to alert.threat_text
+        raw_text=alert.threat_text,  
         status="PROCESSING",
         severity="PENDING",
         category="PENDING",
@@ -90,7 +84,7 @@ def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTas
     db.refresh(db_incident)
 
     # 2. Hand off the heavy AI lifting to a non-blocking background thread
-    # This keeps our API blazing fast, returning an instant 200 OK receipt to the sender
-    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text, db) # 🐛 FIXED: Swapped to alert.threat_text here too
+    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text, db) 
 
     return db_incident
+    
