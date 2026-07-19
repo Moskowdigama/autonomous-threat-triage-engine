@@ -26,9 +26,10 @@ class AutomatedTriageReport(BaseModel):
 def read_root():
     return {"status": "online", "engine": "SOAR Live AI Triage Active"}
 
-def process_incident_with_ai(db_record_id: int, raw_payload: str, db: Session):
+# 1. Update the function signature to receive 'threat_text' instead of 'raw_payload'
+def process_incident_with_ai(db_record_id: int, threat_text: str, db: Session):
     try:
-        # Prompt telling Gemini to act as a Tier-3 SOC Analyst
+        # 2. Update the prompt to use the 'threat_text' variable
         prompt = f"""
         You are an enterprise Incident Response SOAR Automation agent. 
         Analyze the following raw security alert data and extract the triage details.
@@ -36,8 +37,10 @@ def process_incident_with_ai(db_record_id: int, raw_payload: str, db: Session):
         CRITICAL RULE: Severity MUST be strictly classified as one of these: LOW, MEDIUM, HIGH, CRITICAL.
         
         Raw Alert Data:
-        {raw_payload}
+        {threat_text}
         """
+        # ... rest of your code ...
+        
 
         # Call Gemini requesting structured JSON output matching our schema
         response = ai_client.models.generate_content(
