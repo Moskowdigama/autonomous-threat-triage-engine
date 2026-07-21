@@ -7,10 +7,16 @@ class IncidentReport(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     threat_text = Column(String, nullable=False)
-    cvss_score = Column(Float, nullable=False)
-    core_vector = Column(String, nullable=False)
-    subcategory = Column(String, nullable=False)
-    framework_alignment = Column(String, nullable=False)
-    playbook_actions = Column(String, nullable=False)
+        # ADD THESE COLUMNS SO MAIN.PY DOESN'T CRASH:
+    status = Column(String, default="PENDING", nullable=True)
+    severity = Column(String, default="PENDING", nullable=True)
+    category = Column(String, default="PENDING", nullable=True)
+    summary = Column(Text, nullable=True)
+
+    # OTHER EXISTING COLUMNS:
+    cvss_score = Column(Float, nullable=True)
+    core_vector = Column(String, nullable=True)
+    subcategory = Column(String, nullable=True)
+    framework_alignment = Column(String, nullable=True)
+    playbook_actions = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-  
