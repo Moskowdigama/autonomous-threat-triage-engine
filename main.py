@@ -73,7 +73,8 @@ def process_incident_with_ai(db_record_id: int, threat_text: str, db: Session):
 def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTasks, db: Session = Depends(database.get_db)):
     # 1. Instantly log the raw alert into the database
     db_incident = models.IncidentReport(
-        threat_text=alert.threat_text,  
+        threat_text=alert.threat_text,
+        status="PENDING",
         severity="PENDING",
         category="PENDING",
         summary="Awaiting AI Analysis..."
