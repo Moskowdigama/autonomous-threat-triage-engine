@@ -74,7 +74,6 @@ def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTas
     # 1. Instantly log the raw alert into the database
     db_incident = models.IncidentReport(
         threat_text=alert.threat_text,  
-        status="PROCESSING",
         severity="PENDING",
         category="PENDING",
         summary="Awaiting AI Analysis..."
