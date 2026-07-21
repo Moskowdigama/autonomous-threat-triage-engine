@@ -9,6 +9,7 @@ class IncidentReport(Base):
     threat_text = Column(String, nullable=False)
         # ADD THESE COLUMNS SO MAIN.PY DOESN'T CRASH:
     status = Column(String, default="PENDING", nullable=True)
+    severity = Column(String, default="PENDING", nullable=True)
     
     # OTHER EXISTING COLUMNS:
     cvss_score = Column(Float, nullable=True)
