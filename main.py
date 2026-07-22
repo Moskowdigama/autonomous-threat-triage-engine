@@ -1,105 +1,94 @@
 import os
-from database import SessionLocal, get_db
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
-from google import genai
-from google.genai import types
+import json
+from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+import google.generativeai as genai
 
-import models, schemas, database
+from database import engine, get_db, Base
+import models
 
-app = FastAPI(title="SOAR AI Triage Engine")
+# Ensure database tables exist
+Base.metadata.create_all(bind=engine)
 
-# Initialize the official Google GenAI Client
-ai_client = genai.Client()
+app = FastAPI(title="SOC Incident Response Engine")
 
-# Auto-build database tables on boot
-models.Base.metadata.create_all(bind=database.engine)
+# Setup Gemini Engine
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
-# Deep Pydantic Structure instructing Gemini exactly how to format the security alert
-class AutomatedTriageReport(BaseModel):
-    severity: str  # Must be LOW, MEDIUM, HIGH, or CRITICAL
-    category: str  # Phishing, Ransomware, Brute Force, etc.
-    summary: str   # Clean, executive-friendly summary of the attack vector
+class AlertSchema(BaseModel):
+    threat_text: str
 
-@app.get("/")
-def read_root():
-    return {"status": "online", "engine": "SOAR Live AI Triage Active"}
-
-def process_incident_with_ai(db_record_id: int, threat_text: str):
-    db = SessionLocal()
+def run_ai_triage_pipeline(incident_id: int):
+    db = next(get_db())
+    incident = None
     try:
+        incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == incident_id).first()
+        if not incident:
+            return
+
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
         prompt = f"""
-        You are an enterprise Incident Response SOAR Automation agent. 
-        Analyze the following raw security alert data and extract the triage details.
-        
-        CRITICAL RULE: Severity MUST be strictly classified as one of these: LOW, MEDIUM, HIGH, CRITICAL.
-        
-        Raw Alert Data:
-        {threat_text}
+        You are an Enterprise SOC Analyst. Analyze this raw threat telemetry and output strictly valid JSON with no markdown syntax wrapping:
+        {{
+          "severity": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+          "category": "Vector classification (e.g. Agent Malfunction, Privilege Escalation, Exfiltration)",
+          "mitre_technique": "MITRE ATT&CK ID (e.g. T1078, T1499)",
+          "summary": "2-sentence executive summary explaining business impact and immediate threat."
+        }}
+
+        Telemetry Payload:
+        {incident.threat_text}
         """
 
-        # Call Gemini requesting structured JSON output matching our schema
-        response = ai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=AutomatedTriageReport,
-                temperature=0.1 # Low temp = highly deterministic, accurate triage
-            ),
+        # Generation config wrapped safely
+        response = model.generate_content(
+            prompt,
+            generation_config={"temperature": 0.2, "max_output_tokens": 300}
         )
+        
+        # Clean response text if markdown code fences exist
+        clean_json = response.text.replace("```json", "").replace("```", "").strip()
+        data = json.loads(clean_json)
 
-        # Parse Gemini's structured JSON directly into our schema format
-        ai_data = AutomatedTriageReport.model_validate_json(response.text)
-
-        # Update the pending database log with the AI's conclusions
-        incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == db_record_id).first()
-        if incident:
-            incident.severity = ai_data.severity
-            incident.category = ai_data.category
-            incident.summary = ai_data.summary
-            incident.status = "TRIAGED"
-            db.commit()
+        # Update DB Record
+        incident.severity = data.get("severity", "HIGH")
+        incident.category = data.get("category", "Unknown Vector")
+        incident.summary = f"[{data.get('mitre_technique', 'T1000')}] {data.get('summary', 'Analysis complete.')}"
+        incident.status = "TRIAGED"
+        db.commit()
 
     except Exception as e:
-        db.rollback()
-        incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == db_record_id).first()
+        print(f"Pipeline Execution Error: {e}")
         if incident:
-            incident.summary = f"AI Triage Failed: {str(e)}"
-            incident.status = "FAILED_RETRY"
+            incident.status = "FAILED"
             db.commit()
     finally:
         db.close()
-    
 
-
-@app.post("/alerts/", response_model=schemas.IncidentResponse)
-def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTasks, db: Session = Depends(database.get_db)):
-    # 1. Instantly log the raw alert into the database
-    db_incident = models.IncidentReport(
-        threat_text=alert.threat_text,
+# --- Endpoints ---
+@app.post("/alerts/dispatch")
+def dispatch_alert(payload: AlertSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    new_alert = models.IncidentReport(
+        threat_text=payload.threat_text,
         status="PENDING",
         severity="PENDING",
-        category="PENDING",
-        summary="Awaiting AI Analysis..."
+        category="PENDING"
     )
-    db.add(db_incident)
+    db.add(new_alert)
     db.commit()
-    db.refresh(db_incident)
+    db.refresh(new_alert)
 
-    # 2. Hand off the heavy AI lifting to a non-blocking background thread
-    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text) 
+    background_tasks.add_task(run_ai_triage_pipeline, new_alert.id)
+    return {"id": new_alert.id, "status": "PENDING"}
 
-    return db_incident
-
-
-
-@app.get("/alerts/{alert_id}")
-def get_alert(alert_id: int, db: Session = Depends(get_db)):
-    incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == alert_id).first()
-    if not incident:
-        raise HTTPException(status_code=404, detail="Incident not found")
-    return incident
-    
-    
+@app.get("/alerts/{incident_id}")
+def get_alert(incident_id: int, db: Session = Depends(get_db)):
+    alert = db.query(models.IncidentReport).filter(models.IncidentReport.id == incident_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Incident record not found")
+    return alert
+        
