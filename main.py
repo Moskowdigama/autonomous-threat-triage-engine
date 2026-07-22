@@ -70,6 +70,7 @@ def process_incident_with_ai(db_record_id: int, threat_text: str):
             db.commit()
     finally:
         db.close()
+    
 
 
 @app.post("/alerts/", response_model=schemas.IncidentResponse)
