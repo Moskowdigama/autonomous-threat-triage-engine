@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 import google.generativeai as genai
 import traceback
+import time
 
 from database import engine, get_db, Base
 import models
@@ -49,10 +50,22 @@ def run_ai_triage_pipeline(incident_id: int):
         """
 
         # Generation config wrapped safely
-        response = model.generate_content(
-            prompt,
-            generation_config={"temperature": 0.2, "max_output_tokens": 300}
-        )
+        max_retries = 3
+response = None
+
+for attempt in range(max_retries):
+    try:
+        # Call Gemini model
+        response = model.generate_content(prompt)
+        break  # Success! Break out of the loop.
+    except Exception as e:
+        # Check if the error is a Rate Limit (429)
+        if "429" in str(e) and attempt < max_retries - 1:
+            print(f"Rate limit hit (429). Retrying in 10s... (Attempt {attempt + 1}/{max_retries})")
+            time.sleep(10)  # Wait 10 seconds before trying again
+        else:
+            # If it's another error or we ran out of retries, raise it to the logs
+            raise e
         
         # Clean response text if markdown code fences exist
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
