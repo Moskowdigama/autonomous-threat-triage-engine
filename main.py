@@ -4,6 +4,7 @@ from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import google.generativeai as genai
+import traceback
 
 from database import engine, get_db, Base
 import models
@@ -65,6 +66,7 @@ def run_ai_triage_pipeline(incident_id: int):
 
     except Exception as e:
         print(f"Pipeline Execution Error: {e}")
+        traceback.print_exc() 
         if incident:
             incident.status = "FAILED"
             db.commit()
