@@ -92,4 +92,14 @@ def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTas
     background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text) 
 
     return db_incident
+
+
+
+@app.get("/alerts/{alert_id}")
+def get_alert(alert_id: int, db: Session = Depends(get_db)):
+    incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == alert_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return incident
+    
     
