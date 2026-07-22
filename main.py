@@ -3,6 +3,7 @@ import json
 from fastapi import FastAPI, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from database import SessionLocal
 import google.generativeai as genai
 import traceback
 
