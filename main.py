@@ -24,8 +24,7 @@ class AlertSchema(BaseModel):
     threat_text: str
 
 def run_ai_triage_pipeline(incident_id: int):
-    db = next(get_db())
-    incident = None
+    db = SessionLocal()
     try:
         incident = db.query(models.IncidentReport).filter(models.IncidentReport.id == incident_id).first()
         if not incident:
@@ -62,17 +61,17 @@ def run_ai_triage_pipeline(incident_id: int):
         incident.severity = data.get("severity", "HIGH")
         incident.category = data.get("category", "Unknown Vector")
         incident.summary = f"[{data.get('mitre_technique', 'T1000')}] {data.get('summary', 'Analysis complete.')}"
-        incident.status = "TRIAGED"
+        incident.status = "COMPLETED"
+        incident.ai_analysis = response.text
         db.commit()
 
     except Exception as e:
-        print(f"Pipeline Execution Error: {e}")
-        traceback.print_exc() 
-        if incident:
+        print(f"Pipeline Execution Error: {e}", flush=True) # flush=True forces log output
+        if 'incident' in locals() and incident:
             incident.status = "FAILED"
             db.commit()
     finally:
-        db.close()
+        db.close() # Always close background DB session
 
 # --- Endpoints ---
 @app.post("/alerts/dispatch")
