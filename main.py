@@ -84,7 +84,7 @@ def receive_alert(alert: schemas.IncidentCreate, background_tasks: BackgroundTas
     db.refresh(db_incident)
 
     # 2. Hand off the heavy AI lifting to a non-blocking background thread
-    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text, db) 
+    background_tasks.add_task(process_incident_with_ai, db_incident.id, alert.threat_text) 
 
     return db_incident
     
