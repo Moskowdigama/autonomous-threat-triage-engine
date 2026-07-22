@@ -1,4 +1,5 @@
 import os
+from database import SessionLocal
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from google import genai
