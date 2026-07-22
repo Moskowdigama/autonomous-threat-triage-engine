@@ -18,6 +18,8 @@ with st.form("dispatch_form"):
     submit = st.form_submit_button("🚀 Dispatch Telemetry to Engine", use_container_width=True)
 
 if submit:
+    target_url = f"{FASTAPI_URL}/triage"
+    st.info(f"Targeting backend at: {target_url}")
     try:
         res = requests.post(f"{FASTAPI_URL}/triage", json={"threat_text": telemetry_input})
         if res.status_code == 200:
