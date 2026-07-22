@@ -68,6 +68,8 @@ def process_incident_with_ai(db_record_id: int, threat_text: str):
             incident.summary = f"AI Triage Failed: {str(e)}"
             incident.status = "FAILED_RETRY"
             db.commit()
+    finally:
+        db.close()
 
 
 @app.post("/alerts/", response_model=schemas.IncidentResponse)
