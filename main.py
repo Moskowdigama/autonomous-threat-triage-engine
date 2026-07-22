@@ -38,7 +38,7 @@ def run_ai_triage_pipeline(incident_id: int):
         if not incident:
             return
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
         
 
         prompt = f"""
