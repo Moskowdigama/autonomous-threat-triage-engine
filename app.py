@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-FASTAPI_URL = "https://e-1.onrender.com"  # Your Render backend URL
+FASTAPI_URL = "https://autonomous-threat-triage-engine.onrender.com" # Your Render backend URL
 
 st.set_page_config(page_title="AI SOC Dashboard", page_icon="🛡️", layout="wide")
 
