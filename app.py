@@ -19,7 +19,7 @@ with st.form("dispatch_form"):
 
 if submit:
     try:
-        res = requests.post(f"{FASTAPI_URL}/alerts/dispatch", json={"threat_text": telemetry_input})
+        res = requests.post(f"{FASTAPI_URL}/triage", json={"threat_text": telemetry_input})
         if res.status_code == 200:
             data = res.json()
             st.session_state["active_incident_id"] = data["id"]
