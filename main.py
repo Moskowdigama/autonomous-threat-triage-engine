@@ -70,7 +70,7 @@ def run_ai_triage_pipeline(incident_id: int):
         db.close()
 
 # --- Endpoints ---
-@app.post("/triage")
+@app.post("/alerts/dispatch")
 def dispatch_alert(payload: AlertSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     new_alert = models.IncidentReport(
         threat_text=payload.threat_text,
