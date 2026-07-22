@@ -29,7 +29,9 @@ def run_ai_triage_pipeline(incident_id: int):
         if not incident:
             return
 
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash")
+# or "gemini-2.0-flash" / "gemini-1.5-pro"
+        
         
         prompt = f"""
         You are an Enterprise SOC Analyst. Analyze this raw threat telemetry and output strictly valid JSON with no markdown syntax wrapping:
