@@ -15,8 +15,8 @@ app = FastAPI(title="SOC Incident Response Engine")
 
 # Setup Gemini Engine
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY environment variable is not set!")
 
 class AlertSchema(BaseModel):
     threat_text: str
