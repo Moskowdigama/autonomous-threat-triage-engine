@@ -8,6 +8,7 @@ class IncidentReport(Base):
     id = Column(Integer, primary_key=True, index=True)
     threat_text = Column(String, nullable=False)
         # ADD THESE COLUMNS SO MAIN.PY DOESN'T CRASH:
+    summary = Column(String, nullable=True)
     status = Column(String, default="PENDING", nullable=True)
     severity = Column(String, default="PENDING", nullable=True)
     category = Column(String, default="PENDING", nullable=True)
