@@ -26,6 +26,7 @@ def read_root():
     return {"status": "online", "engine": "SOAR Live AI Triage Active"}
 
 def process_incident_with_ai(db_record_id: int, threat_text: str):
+    db = SessionLocal()
     try:
         prompt = f"""
         You are an enterprise Incident Response SOAR Automation agent. 
