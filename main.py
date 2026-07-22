@@ -91,4 +91,11 @@ def get_alert(incident_id: int, db: Session = Depends(get_db)):
     if not alert:
         raise HTTPException(status_code=404, detail="Incident record not found")
     return alert
+
+
+# Add this at the very bottom of main.py
+@app.get("/")
+def root():
+    return {"status": "online", "system": "Autonomous Threat Triage Engine"}
+        
         
